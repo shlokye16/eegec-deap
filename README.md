@@ -103,10 +103,5 @@ jupyter
 
 ## Part of a Larger Research Arc
 
-This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. The portfolio targets PhD programs in Cognitive Science and Neuroscience (UCSD, Stanford, Berkeley, Caltech). Project 1 establishes the empirical and computational foundation — what emotional state looks like at the neural signal level — that the subsequent projects build on.
+This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. Project 1 establishes the empirical and computational foundation of what emotional state looks like at the neural signal level that the subsequent projects build on.
 
-**Primary differentiators:** Caltech CNS, Berkeley Helen Wills, Stanford Neurosciences IDP, UCSD CogSci.
-
----
-
-*README v1 — April 2026. A second version will be written at project completion after the paper is drafted.*

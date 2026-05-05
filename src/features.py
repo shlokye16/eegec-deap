@@ -6,10 +6,22 @@ ELECTRODE_REGIONS, and FAA_PAIRS from here everywhere. Never hardcode them
 elsewhere.
 
 Feature vector structure (131 features per trial):
-    [0:128]   Band power: 32 electrodes × 4 bands, order ch0_theta, ch0_alpha,
-              ch0_beta, ch0_gamma, ch1_theta, ..., ch31_gamma
+    [0:128]   Log band power: 32 electrodes × 4 bands, order ch0_theta, ch0_alpha,
+              ch0_beta, ch0_gamma, ch1_theta, ..., ch31_gamma.
+              Band power is integrated via trapezoidal rule over the Welch PSD,
+              then log-transformed (natural log). Band-power distributions are
+              approximately log-normal across all four bands (validated in
+              02_features.ipynb), so log-transforming makes the feature
+              distributions approximately Gaussian, which benefits both the RBF
+              SVM (whose kernel distance metric is Euclidean) and the RF
+              (which splits on feature values). This matches the differential
+              entropy approach of Duan et al. (2013), where differential entropy
+              for a Gaussian signal equals log(variance) + constant.
     [128:131] FAA: log(right_alpha) - log(left_alpha) for 3 frontal pairs
-              (Fp1-Fp2, AF3-AF4, F3-F4)
+              (Fp1-Fp2, AF3-AF4, F3-F4). Computed from the pre-log band powers
+              directly; the log-difference is algebraically equivalent to
+              log(right) - log(left) regardless of the log-transform applied
+              to the 128-feature vector.
 
 FAA features are a log-difference transformation of a subset of the alpha band
 features already present in [0:128]. This is intentional: the explicit ratio
@@ -65,13 +77,16 @@ FAA_PAIRS = [
 NPERSEG  = 256
 NOVERLAP = 128
 
-# Derived constants (used in models.py)
-N_BANDS     = len(BANDS)      # 4
-N_ELECTRODES = 32
-N_BP_FEATURES = N_ELECTRODES * N_BANDS  # 128
-N_FAA_FEATURES = len(FAA_PAIRS)          # 3
-N_FEATURES  = N_BP_FEATURES + N_FAA_FEATURES  # 131
+# Small epsilon for log-safety (PSD values are non-negative; zero occurs at
+# DC or numerically degenerate channels)
+_LOG_EPS = 1e-10
 
+# Derived constants (used in models.py)
+N_BANDS       = len(BANDS)                       # 4
+N_ELECTRODES  = 32
+N_BP_FEATURES = N_ELECTRODES * N_BANDS           # 128
+N_FAA_FEATURES = len(FAA_PAIRS)                  # 3
+N_FEATURES    = N_BP_FEATURES + N_FAA_FEATURES   # 131
 
 
 def _band_power(psd: np.ndarray, freqs: np.ndarray, low: float, high: float) -> float:
@@ -85,7 +100,7 @@ def _band_power(psd: np.ndarray, freqs: np.ndarray, low: float, high: float) -> 
         high:  upper bound (Hz, exclusive)
 
     Returns:
-        scalar band power
+        scalar band power (non-negative)
     """
     mask = (freqs >= low) & (freqs < high)
     return float(np.trapezoid(psd[mask], freqs[mask]))
@@ -95,34 +110,47 @@ def extract_trial(signal: np.ndarray) -> np.ndarray:
     """
     Extract 131 features from a single trial.
 
+    Band powers are log-transformed before flattening. Band-power distributions
+    are approximately log-normal (validated in 02_features.ipynb), making the
+    log-transformed features approximately Gaussian. This matches the rationale
+    of differential entropy (Duan et al., 2013) and improves RBF SVM performance
+    by bringing feature distances into a more uniform scale.
+
+    FAA features use the pre-log band powers directly; log(right) - log(left)
+    is computed from raw power, which is algebraically identical to whether we
+    log the 128-feature vector first or not.
+
     Args:
         signal: (32, 7680) — 32 EEG channels, 7680 baseline-corrected samples
 
     Returns:
-        features: (131,) — 128 band-power features + 3 FAA features
+        features: (131,) — 128 log-band-power features + 3 FAA features
     """
-    band_list  = list(BANDS.keys())
-    band_powers = np.zeros((N_ELECTRODES, N_BANDS))  # (32, 4)
+    band_list   = list(BANDS.keys())
+    band_powers = np.zeros((N_ELECTRODES, N_BANDS), dtype=np.float64)  # (32, 4)
 
     for ch in range(N_ELECTRODES):
         freqs, psd = welch(signal[ch], fs=FS, nperseg=NPERSEG, noverlap=NOVERLAP)
         for b, (low, high) in enumerate(BANDS.values()):
             band_powers[ch, b] = _band_power(psd, freqs, low, high)
 
-    # 128 band-power features: flattened (32, 4) row-major
+    # 128 log-band-power features: flattened (32, 4) row-major
     # → ch0_theta, ch0_alpha, ch0_beta, ch0_gamma, ch1_theta, ...
-    bp_features = band_powers.flatten()  # (128,)
+    # Log-transform: makes distributions approximately Gaussian; epsilon guards
+    # against log(0) for degenerate/artifact channels
+    bp_features = np.log(band_powers + _LOG_EPS).flatten()  # (128,)
 
     # 3 FAA features: log(right_alpha) - log(left_alpha)
-    # Small epsilon avoids log(0); values are PSD power so always >= 0
+    # Computed from raw band_powers (pre-log) for clarity; the result is
+    # identical to log(right) - log(left) as used in the paper.
     alpha_idx = band_list.index('alpha')
-    eps = 1e-10
     faa = np.array([
-        np.log(band_powers[r, alpha_idx] + eps) - np.log(band_powers[l, alpha_idx] + eps)
+        np.log(band_powers[r, alpha_idx] + _LOG_EPS)
+        - np.log(band_powers[l, alpha_idx] + _LOG_EPS)
         for l, r in FAA_PAIRS
     ])  # (3,)
 
-    return np.concatenate([bp_features, faa])  # (131,)
+    return np.concatenate([bp_features, faa]).astype(np.float32)  # (131,)
 
 
 def extract_all(X_eeg: np.ndarray) -> np.ndarray:
@@ -133,9 +161,10 @@ def extract_all(X_eeg: np.ndarray) -> np.ndarray:
         X_eeg: (N, 32, 7680)
 
     Returns:
-        features: (N, 131)
+        features: (N, 131)  dtype=float32
     """
-    return np.array([extract_trial(X_eeg[i]) for i in range(len(X_eeg))])
+    return np.array([extract_trial(X_eeg[i]) for i in range(len(X_eeg))],
+                    dtype=np.float32)
 
 
 def extract_peripheral(X_peripheral: np.ndarray) -> np.ndarray:

@@ -26,12 +26,6 @@ Median split decision (document in paper):
   the threshold comparable across folds and consistent with prior DEAP literature.
   Trials exactly at the median are assigned to class 0 (low).
 
-New functions (vs v1):
-  - sign_test_ws():              M1 — binomial sign test on per-subject WS accuracy
-  - paired_accuracy_tests():     M3 — Wilcoxon signed-rank on LOSO fold accuracy pairs
-  - fdr_correction():            M6 — Benjamini-Hochberg FDR on arbitrary p-value dicts
-  - mi_importance_correlation(): C1 — importance correlation on MI-selected features only
-  - shuffled_label_null():       M2 — n_permutations default raised to 1000; p5 added
 """
 
 import contextlib
@@ -341,9 +335,6 @@ def sign_test_ws(metrics_ws: dict) -> dict:
     accuracy? Tests whether the number of above-chance subjects is significantly
     greater than expected by chance (binomial null: p=0.5, alternative='greater').
 
-    M1 fix: the paper stated WS accuracy "exceeds 0.50 in aggregate" without a
-    formal per-subject test. This function provides that test.
-
     Args:
         metrics_ws: run_within_subject()['metrics']
                     {target: {model: {'acc': list of 32 per-subject means}}}
@@ -375,16 +366,7 @@ def paired_accuracy_tests(fold_acc: dict) -> dict:
     """
     Wilcoxon signed-rank tests on paired fold-level LOSO accuracy (32 pairs per
     comparison). Tests whether accuracy differences between feature configurations
-    are non-trivially above noise across folds.
-
-    M3 fix: the paper made RQ4 claims (EEG vs peripheral, combined vs peripheral
-    for dominance) without confidence intervals or paired tests. A 0.029 difference
-    on 32 folds could be noise; Wilcoxon tells us if it is.
-
-    Key comparisons:
-      - EEG vs peripheral (for each target, both models)
-      - Combined vs peripheral (dominance specifically — the "EEG hurts" claim)
-      - Combined vs EEG (to confirm combined is not better than EEG for valence)
+    are non-trivially above noise across folds (RQ4 directional evidence).
 
     Args:
         fold_acc: results['fold_acc'] from run_loso()
@@ -427,11 +409,8 @@ def paired_accuracy_tests(fold_acc: dict) -> dict:
 def fdr_correction(pvalue_dict: dict, alpha: float = 0.05) -> dict:
     """
     Benjamini-Hochberg FDR correction on a flat dict of p-values.
-
-    M6 fix: no multiple comparison correction was applied across the 12 importance
-    correlation cells and 18+ paired accuracy comparisons. BH-FDR controls the
-    expected proportion of false discoveries rather than family-wise error rate,
-    which is appropriate for the exploratory framing of this analysis.
+    Controls the expected proportion of false discoveries rather than
+    family-wise error rate, appropriate for the exploratory framing here.
 
     Args:
         pvalue_dict: {key: pvalue} — flat dict (not nested)
@@ -492,41 +471,26 @@ def mi_importance_correlation(
     random_state: int = 42,
 ) -> dict:
     """
-    Recompute importance correlation using only the top-k features selected by
-    mutual information with each target label.
+    Identify features carrying label-relevant information via mutual information,
+    used as a diagnostic to check whether importance orthogonality holds when
+    restricted to non-noise features (RQ5 robustness check).
 
-    C1 partial fix: the paper documents that two classifiers in a 131-dimensional
-    sparse space may produce orthogonal importance vectors from inductive-bias
-    differences alone (noise features), not from genuine dimensional independence.
-    MI-based selection identifies features that carry at least some label-relevant
-    information, reducing (not eliminating) the noise-dominance confound.
-
-    Method:
-      1. For each target, binarize labels using global median across all subjects.
-      2. Compute mutual_info_classif between all 131 EEG features and the binary
-         target (using all 1280 trials — this is a diagnostic screening step, not
-         part of any CV fold, so fold-level leakage is not a concern here).
-      3. Take the union of top-k features across the three targets.
-      4. Recompute pairwise Spearman importance correlation between the three
-         importance vectors restricted to the selected feature indices.
-
-    This is a diagnostic function. It does NOT change the main LOSO pipeline.
-    Call it after run_loso() with the importance_mean vectors from loso_results.
+    Global median binarization is used for MI scoring — this is a screening
+    step, not part of any CV fold, so fold-level leakage is not a concern.
 
     Args:
         X_eeg:       (1280, 131) EEG features
         y:           (1280, 4)   raw labels
         subject_ids: (1280,)
-        k:           top-k features per target (default 50, covering ~38%)
+        k:           top-k features per target to include (default 50)
+        random_state: for mutual_info_classif reproducibility
 
     Returns:
         dict with keys:
-            'selected_indices': np.ndarray of union feature indices (<=3k, deduplicated)
-            'n_selected':       number of selected features
+            'selected_indices': np.ndarray — union of top-k indices across targets
+            'n_selected':       int — number of features in the union (≤ 3k)
             'mi_scores':        {target: (131,) MI scores}
-            'corr_full':        importance correlations on full 131 features
-            'corr_mi':          importance correlations on MI-selected features only
-            'imp_vectors_mi':   {target: importance vector sliced to selected features}
+            'top_k_per_target': {target: (k,) top-k indices for that target}
     """
     from features import N_FEATURES
 
@@ -836,34 +800,16 @@ def run_within_subject(
 def _run_fold_null(
     subj: int,
     X_eeg: np.ndarray,
-    X_peripheral: np.ndarray,   # kept in signature for API compatibility; not used
     y: np.ndarray,
     subject_ids: np.ndarray,
     n_perm_repeats: int,
     rf_n_estimators: int,
 ) -> dict:
     """
-    Minimal null fold: EEG-only RF + permutation importance. No peripheral,
-    no combined, no band ablation.
-
-    Rationale for dropping peripheral/combined from null:
-      The null distribution is used in the paper for two things only:
-      (1) EEG RF accuracy null (to test LOSO RF against chance), and
-      (2) importance correlation null (RQ5). Neither requires peripheral or
-      combined configs. The config comparison (RQ4) uses Wilcoxon paired tests
-      on observed fold accuracy, not a null distribution. Running peripheral
-      and combined in the null was computing 2 RF fits per fold per permutation
-      that are immediately discarded.
-
-    Rationale for dropping band ablation from null:
-      The band ablation null was already explicitly not estimated in the paper
-      (Limitation L11). A matched per-band null requires separate null runs
-      per band with a correctly sized null — running ablation inside the main
-      null loop does not provide this. Dropping it removes 4 more RF fits
-      per fold per permutation.
-
-    Net: 1 RF fit + 1 importance computation per fold, down from 7 RF fits
-    + 1 importance. Speedup: ~5-7x on top of the previous lean fold.
+    Minimal null fold: EEG-only RF + permutation importance.
+    Peripheral, combined, and band ablation are excluded from the null loop:
+    the null is used only for (1) EEG RF accuracy vs chance and (2) importance
+    correlation null for RQ5. Both require only the EEG RF path.
     """
     test_mask  = subject_ids == subj
     train_mask = ~test_mask
@@ -935,27 +881,17 @@ def shuffled_label_null(
 ) -> dict:
     """
     Null distributions via shuffled labels, batched with checkpoint saving.
+    Labels are shuffled within each subject to preserve per-subject trial counts.
 
-    M2 fix: uses _run_fold_null (lean RF-only fold) instead of _run_fold.
-    Removes SVM from the null loop entirely (null only records RF metrics and
-    RF importance correlation — SVM null was never used in the paper).
-    Reduces rf_n_estimators to 50 and n_perm_repeats to 3: both are sufficient
-    for estimating the shape of a null distribution, which requires far less
-    precision than the observed importance estimate. Combined speedup vs v1:
-    approximately 5-6x per permutation.
+    Uses _run_fold_null (lean RF-only fold): 1 RF fit + 1 importance computation
+    per fold per permutation, consistent with the null requiring only EEG RF
+    accuracy (vs chance) and importance correlation (RQ5).
 
-    n_permutations=500 is the new default. At 500 permutations the null p5/p95
-    estimates stabilize to ±~0.010, which is acceptable for the exploratory
-    framing. 1000 permutations (±~0.007) can be reached overnight by setting
-    n_permutations=1000 with checkpoint resumption from the same checkpoint_dir.
+    Saves one .pkl per batch to checkpoint_dir. Safe to interrupt — resumes
+    from the last completed batch on the next call with the same checkpoint_dir.
 
-    Saves one .pkl per batch to checkpoint_dir. If interrupted, resumes from
-    the last completed batch automatically on the next call with the same
-    checkpoint_dir. Do not change checkpoint_dir between interrupted runs.
-
-    Note: checkpoint_dir defaults to null_checkpoints_v2. If you have an
-    existing null_checkpoints directory from the slow v1 run, those checkpoints
-    are incompatible (different fold structure) and should not be reused.
+    At 500 permutations the null p5/p95 estimates stabilize to ±~0.010,
+    which is acceptable for the exploratory framing of this analysis.
     """
     ckpt_dir = Path(checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -995,7 +931,7 @@ def shuffled_label_null(
 
                 fold_results = Parallel(n_jobs=n_jobs, verbose=0)(
                     delayed(_run_fold_null)(
-                        subj, X_eeg, X_peripheral, y_shuf, subject_ids,
+                        subj, X_eeg, y_shuf, subject_ids,
                         n_perm_repeats, rf_n_estimators,
                     )
                     for subj in subjects

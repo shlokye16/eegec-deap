@@ -109,5 +109,3 @@ def _print_summary(X_eeg: np.ndarray, y: np.ndarray, n_subjects: int) -> None:
         col = y[:, i]
         print(f"  {name:>10}: min={col.min():.1f}  max={col.max():.1f}  "
               f"mean={col.mean():.2f}  median={np.median(col):.1f}")
-
-

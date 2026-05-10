@@ -1,8 +1,8 @@
 # Project 1: Neural Correlates of Emotion
 ## EEG-Based Classification of Affective Dimensions: Valence, Arousal, and Dominance
 
-**Author:** Shlok Khare | UC Davis | B.S. Computer Science & Cognitive Science
-**Paper** [![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-87CEEB?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
+[![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-87CEEB?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
+**Author:** Shlok Khare | UC Davis | B.S. Cognitive Science & Computer Science, Minor Psychology
 
 ---
 

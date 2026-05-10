@@ -6,7 +6,6 @@
 ---
 
 **Author:** Shlok Khare | UC Davis | B.S. Cognitive Science & Computer Science, Minor Psychology
-
 ---
 
 ## What This Project Is

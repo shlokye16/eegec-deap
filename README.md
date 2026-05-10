@@ -2,8 +2,7 @@
 ## EEG-Based Classification of Affective Dimensions: Valence, Arousal, and Dominance
 
 **Author:** Shlok Khare | UC Davis | B.S. Computer Science & Cognitive Science
-[![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-636B2F?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
-![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+**Paper** [![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-87CEEB?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
 
 ---
 

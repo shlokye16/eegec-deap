@@ -2,9 +2,8 @@
 ## EEG-Based Classification of Affective Dimensions: Valence, Arousal, and Dominance
 
 **Author:** Shlok Khare | UC Davis | B.S. Computer Science & Cognitive Science
-**Timeline:** April 15 – May 31, 2026 (~6 weeks)
-**Status:** Complete (May 2026)
-**Paper:** [doi.org/10.5281/zenodo.20108739](https://doi.org/10.5281/zenodo.20108739)
+[![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-636B2F?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 
 ---
 
@@ -155,10 +154,6 @@ jupyter
 
 ## Part of a Larger Research Arc
 
-This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. The portfolio targets PhD programs in Cognitive Science and Neuroscience (UCSD, Stanford, Berkeley, Caltech). Project 1 establishes the empirical and computational foundation for what emotional state looks like at the neural signal level, and the subsequent projects build on both the pipeline and the findings.
+This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. Project 1 establishes the empirical and computational foundation for what emotional state looks like at the neural signal level, and the subsequent projects build on both the pipeline and the findings.
 
-**Primary target programs:** Caltech CNS, Berkeley Helen Wills, Stanford Neurosciences IDP, UCSD CogSci.
 
----
-
-*README v2 — May 2026. Updated at project completion. Paper published at [doi.org/10.5281/zenodo.20108739](https://doi.org/10.5281/zenodo.20108739).*

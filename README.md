@@ -154,6 +154,18 @@ jupyter
 
 ---
 
+## Citation
+
+If you use this code or build on this work, please cite:
+
+```
+Khare, S. (2026). Neural Correlates of Emotion
+EEG-Based Classification of Affective Dimensions: Neural Dissociability of Valence, Arousal, and Dominance in Oscillatory EEG Features. University of California, Davis.
+https://github.com/shlokye16/eegec-deap
+```
+
+---
+
 ## Part of a Larger Research Arc
 
 This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. Project 1 establishes the empirical and computational foundation for what emotional state looks like at the neural signal level, and the subsequent projects build on both the pipeline and the findings.

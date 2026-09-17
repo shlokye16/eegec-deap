@@ -1,4 +1,4 @@
-# Project 1: Neural Correlates of Emotion
+# Neural Correlates of Emotion
 ## EEG-Based Classification of Affective Dimensions: Valence, Arousal, and Dominance
 
 [![Paper Preprint](https://img.shields.io/badge/Zenodo-Paper%20Preprint-87CEEB?logo=zenodo)](https://doi.org/10.5281/zenodo.20108739)
@@ -21,8 +21,7 @@ The pipeline extracts log-transformed Welch power spectral density features acro
 
 Affective neuroscience predicts that valence, arousal, and dominance engage anatomically and functionally distinct neural circuits. Valence tracks approach-withdrawal motivation through frontal alpha asymmetry. Arousal reflects distributed thalamocortical and hippocampal-cortical dynamics across theta and parietal alpha. Dominance, as perceived situational control, implicates prefrontal regulatory networks anatomically separable from the limbic-frontal circuitry mediating valence. If these predictions hold in the oscillatory domain, classifiers trained independently on each dimension should recruit different frequency-band features, and pairwise importance correlation should be near zero.
 
-Emotion classification in AI systems typically relies on behavioral proxies: text, facial expression, and voice. These reflect the surface of emotional experience rather than the neural activity generating it. A system informed by the frequency-domain dynamics of the brain generating an emotion is categorically different from one inferring affect from downstream behavior. This project is an early step toward that gap computationally, and more directly, it is the empirical foundation for grounding EMMCAI's emotion module in something more principled than sentiment scoring.
-
+Emotion classification in AI systems typically relies on behavioral proxies: text, facial expression, and voice. These reflect the surface of emotional experience rather than the neural activity generating it. A system informed by the frequency-domain dynamics of the brain generating an emotion is categorically different from one inferring affect from downstream behavior. 
 ---
 
 ## Paper
@@ -165,9 +164,5 @@ https://github.com/shlokye16/eegec-deap
 ```
 
 ---
-
-## Part of a Larger Research Arc
-
-This is Project 1 of a five-project research portfolio at the intersection of computational neuroscience, cognitive science, and AI. Project 1 establishes the empirical and computational foundation for what emotional state looks like at the neural signal level, and the subsequent projects build on both the pipeline and the findings.
 
 
